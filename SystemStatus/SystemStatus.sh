@@ -1,9 +1,10 @@
 #!/bin/bash
 
+# Idan Goor & Dor Grinshpan
 # ----------------------------------
-# Description : Check the system status in terms of cpu_idle and free_mem.
-# Input		  : None
-# Exit code   : Number of failed checks.
+# Description : Check the system status.
+# Input		  : The parameters to check.
+# Exit code   : None (daemon).
 # -----------------------------------------------
 
 #flags
@@ -12,11 +13,11 @@ CONFIG=false
 # Thresholds for the checks
 # source https://www.cyberciti.biz/faq/bash-iterate-array/
 names_arr=(
-	"cpu_idle" 
-	"mem_usage" 
+	"cpu_idle"
+	"mem_usage"
 	"swap_usage"
-	"proccesses_amount" 
-	"mem_usage_per_system" 
+	"proccesses_amount"
+	"mem_usage_per_system"
 	"inode_usage_per_system"
 	"ports_listening_amount"
 	"installed_rpm_amount"
@@ -36,11 +37,11 @@ opr_arr=(
 	'<'
 	)
 values_arr=(
-	80 
-	70 
+	80
+	70
 	100
-	140 
-	80 
+	140
+	80
 	90
 	20
 	3200
@@ -51,11 +52,12 @@ values_arr=(
 total_values=${#names_arr[*]}
 
 count_failed_test=0 # Holds amount of failed tests
+set -x
 
 sumTests(){
-	current_date=`date` 
+	local current_date=`date`
 	if [ $count_failed_test -gt 0 ]; then # If a test has failed print NOT OK with current date and return 1; otherwise print OK and return 0
-		echo "====> SUM: Status NOT OK [$current_date]"	
+		echo "====> SUM: Status NOT OK [$current_date]"
 	else
 		echo "====> SUM: Status OK [$current_date]"
 	fi
@@ -84,16 +86,16 @@ getElementIndex () {
 			echo `expr $i - 1`
 			return 0
 		fi
-	}     
+	}
 	echo -1
-	return 1   
+	return 1
 }
 
 # for debug
 printConfig(){
 	for ((i=0; i < 9; i++)){
 		echo "${names_arr[i]} ${opr_arr[i]} ${values_arr[i]}"
-	}     
+	}
 }
 
 readFromConfig(){
@@ -124,7 +126,6 @@ readFromConfig(){
 
     done < "$filename"
 }
-set -x
 
 evaluate(){
 	local express="$1"
@@ -134,10 +135,7 @@ evaluate(){
 
 	result=$(echo "$express" | awk -v value="$value" -v opr="$opr" -v col="$col_num"  '{
 	    res=0+$col;
-    	if (opr == ">" && res > value){
-    		print res;
-    	}
-    	else if (opr == "<" && res < value){
+    	if ( (opr == ">" && res > value) || (opr == "<" && res < value) ){
     		print res;
     	}
     }')
@@ -232,7 +230,6 @@ dockerRunning(){
     createTest "$test_name" "$express" "1"
 }
 
-# echo before
 # printConfig
 
 while getopts ":c:" opt; do
@@ -260,18 +257,18 @@ shift $((OPTIND -1))
 
 
 while true; do
-	echo "Checking status..."
+		echo "Checking status..."
 
     cpuIdle
     memUsage
-	swapUsage
-	proccessesAmount
-	memUsagePerSys
-	inodeUsagePerSys
-	listeningPorts
-	installedRpms
-	dockerRunning
+		swapUsage
+		proccessesAmount
+		memUsagePerSys
+		inodeUsagePerSys
+		listeningPorts
+		installedRpms
+		dockerRunning
 
-	sumTests
-	sleep 5
+		sumTests
+		sleep 5
 done
