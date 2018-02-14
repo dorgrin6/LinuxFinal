@@ -1,17 +1,29 @@
 #!/bin/bash
 
 # Idan Goor & Dor Grinshpan
-# ----------------------------------
+# -----------------------------------------------
 # Description : Check the system status.
 # Input		  : The parameters to check.
 # Exit code   : None (daemon).
 # -----------------------------------------------
+#	In the config file, you can define each of the opetions listed in names_arr
+
+# General idea of the script:
+# All of the script's parameters are undefined at start. If a parameter is defined in the config,
+# it will change the value checked in the script.
+# We chose this method since this will also enable to use the script without a config file.
+# Since Bash doesn't have complex sturctures like 2D arrays or structs, we've used system where:
+# For the i'th parameter to check:
+#			names_arr[i] has the parameter's name
+# 		opr_arr[i] has the kind of operator to check
+# 		values_arr[i] has the value to check against
+# idea from: https://www.cyberciti.biz/faq/bash-iterate-array/
 
 #flags
 CONFIG=false
+DEBUG=false
 
 # Thresholds for the checks
-# source https://www.cyberciti.biz/faq/bash-iterate-array/
 names_arr=(
 	"cpu_idle"
 	"mem_usage"
@@ -22,37 +34,42 @@ names_arr=(
 	"ports_listening_amount"
 	"installed_rpm_amount"
 	"docker_running_amount"
-	"zombie_proccesses"
+	"zombie_processes"
 	)
 opr_arr=(
-	'<'
-	'<'
-	'<'
-	'<'
-	'<'
-	'<'
-	'<'
-	'<'
-	'<'
-	'<'
+	'?'
+	'?'
+	'?'
+	'?'
+	'?'
+	'?'
+	'?'
+	'?'
+	'?'
+	'?'
 	)
 values_arr=(
-	80
-	70
-	100
-	140
-	80
-	90
-	20
-	3200
-	100
-	1
+	0
+	0
+	0
+	0
+	0
+	0
+	0
+	0
+	0
+	0
 	)
 
 total_values=${#names_arr[*]}
 
 count_failed_test=0 # Holds amount of failed tests
-set -x
+#set -x
+
+usage(){
+  echo "usage: $0 [-c <config-path> ]"
+  exit 1
+}
 
 sumTests(){
 	local current_date=`date`
@@ -72,7 +89,6 @@ alert(){
 		echo "$test_name : succeeded"
 	else
 		echo  "$test_name : failed"
-		echo  "-Not OK"
 		count_failed_test=`expr $count_failed_test + 1`
 	fi
 }
@@ -93,7 +109,7 @@ getElementIndex () {
 
 # for debug
 printConfig(){
-	for ((i=0; i < 9; i++)){
+	for ((i=0; i < $total_values; i++)){
 		echo "${names_arr[i]} ${opr_arr[i]} ${values_arr[i]}"
 	}
 }
@@ -104,7 +120,8 @@ readFromConfig(){
 
     while IFS= read -r line
     do
-    	# didnt use IFS inside to support a>b
+    	# I didnt use IFS inside to support a>b (without spaces)
+				originalLine=$line
         line=`echo $line | sed -e 's/#.*$//g' -e 's/[[:space:]]*//g' -e 's/%//g'` # remove comments, spaces, prectanges
         lhs=`echo $line | sed 's/>.*//g'` # take lhs of operation
         rhs=`echo $line | sed 's/^.*[<|>]//g'` # take rhs of opetation
@@ -117,8 +134,10 @@ readFromConfig(){
         # echo "opr=$opr"
         # check validity
         element_idx=`getElementIndex "${names_arr[@]}" "$lhs"`
-        if ! [[ element_idx -ne  -1 ]] || ! [[ $rhs =~ $NUM_REGEX ]] || ! [[ $opr =~ [\<\|\>] ]]; then
-        	echo "Couldn't read line $line"
+        if ! [[ element_idx -ne  -1 ]] || ! [[ $rhs =~ $NUM_REGEX ]] || ! [[ $opr =~ [\<\|\>] ]] ; then
+					if ! [[ $line =~ ^\s*$ ]]; then
+						echo "Couldn't read line '$originalLine'"
+					fi
         fi
 
         opr_arr[$element_idx]=$opr
@@ -149,12 +168,15 @@ createTest(){
 	local col_num="$3"
 
 	local name_idx=getElementIndex "${names_arr[@]}" "$test_name"
-    local value=${values_arr[name_idx]}
-    local opr=${opr_arr[name_idx]}
+  local value=${values_arr[name_idx]}
+  local opr=${opr_arr[name_idx]}
 
+	if [[ $value == '?' ]]; then # test is undefined by user
+		return
+	fi
 
 	local result=$(evaluate "$express" "$value" "$opr" "$col_num")
-    alert "$test_name" "$result"
+  alert "$test_name" "$result"
 }
 
 cpuIdle(){
@@ -230,7 +252,10 @@ dockerRunning(){
     createTest "$test_name" "$express" "1"
 }
 
-# printConfig
+# check that theres at least one argument
+if [[ ! $@ =~ ^\-.+ ]]; then
+  usage
+fi
 
 while getopts ":c:" opt; do
 	case ${opt} in
@@ -255,19 +280,24 @@ while getopts ":c:" opt; do
 done
 shift $((OPTIND -1))
 
+if [[ $DEBUG == true ]]; then
+	printConfig
+fi
 
 while true; do
+		echo "==================================="
 		echo "Checking status..."
 
-    cpuIdle
     memUsage
-		swapUsage
-		proccessesAmount
-		memUsagePerSys
 		inodeUsagePerSys
+		zombies
 		listeningPorts
 		installedRpms
 		dockerRunning
+		cpuIdle
+		swapUsage
+		memUsagePerSys
+		proccessesAmount
 
 		sumTests
 		sleep 5
