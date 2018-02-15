@@ -1,5 +1,12 @@
 #!/bin/bash -e
 
+# Idan Goor & Dor Grinshpan
+# -----------------------------------------------
+# Description : Sync 2 folders contents.
+# Input		  : Folders to sync.
+# Exit code   : 0 if succeeded.
+# -----------------------------------------------
+
 # Variable definition
 DATE=`date +%H:%M:%S_%d.%m.%Y`	# Get the time HH:MM:SS_dd:mm:YY
 WarningHeader="[$DATE Warnning] :"
@@ -179,7 +186,7 @@ for src in $files; do
 	fi
 
 	dst=`convertPath $src`
-	isSyncOn=true;	
+	isSyncOn=true;
 
 	if [ -f $src ]; then
 		test=testFile
@@ -192,7 +199,7 @@ for src in $files; do
 		sync=syncPipe
 	fi
 
-	
+
 	# if sync in needed
 	if testGeneral $test $src $dst; then
 
@@ -215,7 +222,7 @@ for src in $files; do
 	else
 		if $isPrintAllFiles ; then
 			echo $src
-		fi	
+		fi
 	fi
 
 done

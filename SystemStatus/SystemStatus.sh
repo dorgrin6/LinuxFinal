@@ -6,7 +6,7 @@
 # Input		  : The parameters to check.
 # Exit code   : None (daemon).
 # -----------------------------------------------
-#	In the config file, you can define each of the opetions listed in names_arr
+#	In the config file, you can define each of the parameters listed in names_arr
 
 # General idea of the script:
 # All of the script's parameters are undefined at start. If a parameter is defined in the config,
@@ -71,9 +71,10 @@ usage(){
   exit 1
 }
 
+# If a test has failed print NOT OK with current date and return 1; otherwise print OK and return 0
 sumTests(){
 	local current_date=`date`
-	if [ $count_failed_test -gt 0 ]; then # If a test has failed print NOT OK with current date and return 1; otherwise print OK and return 0
+	if [ $count_failed_test -gt 0 ]; then
 		echo "====> SUM: Status NOT OK [$current_date]"
 	else
 		echo "====> SUM: Status OK [$current_date]"
@@ -88,7 +89,7 @@ alert(){
 	if [ -z "$result" ]; then
 		echo "$test_name : succeeded"
 	else
-		echo  "$test_name : failed"
+		echo  "$test_name : failed $fail_msg"
 		count_failed_test=`expr $count_failed_test + 1`
 	fi
 }
@@ -126,12 +127,6 @@ readFromConfig(){
         lhs=`echo $line | sed 's/>.*//g'` # take lhs of operation
         rhs=`echo $line | sed 's/^.*[<|>]//g'` # take rhs of opetation
         opr=`echo $line | sed 's/[^<|^>]//g'` # take operator
-
-
-        # echo "line=$line"
-        # echo "lhs=$lhs"
-        # echo "rhs=$rhs"
-        # echo "opr=$opr"
         # check validity
         element_idx=`getElementIndex "${names_arr[@]}" "$lhs"`
         if ! [[ element_idx -ne  -1 ]] || ! [[ $rhs =~ $NUM_REGEX ]] || ! [[ $opr =~ [\<\|\>] ]] ; then
@@ -171,12 +166,15 @@ createTest(){
   local value=${values_arr[name_idx]}
   local opr=${opr_arr[name_idx]}
 
-	if [[ $value == '?' ]]; then # test is undefined by user
+	# test is undefined by config
+	if [[ $value == '?' ]]; then
 		return
 	fi
 
 	local result=$(evaluate "$express" "$value" "$opr" "$col_num")
-  alert "$test_name" "$result"
+	local opposite_opr=$([[ $opr = ">" ]] && echo "less than" || echo "more than" )
+	local errorMsg="[ value is "$result", should be "$opposite_opr" "$value" ]"
+  alert "$test_name" "$result" "$errorMsg"
 }
 
 cpuIdle(){
@@ -209,14 +207,14 @@ proccessesAmount(){
 
 memUsagePerSys(){
 	# Source https://unix.stackexchange.com/questions/15075/only-display-df-lines-that-have-more-fs-usage-than-80
-	local test_name="mem_usage_per_system"
+		local test_name="mem_usage_per_system"
     local express=$(df -P)
 
     createTest "$test_name" "$express" "5"
 }
 
 inodeUsagePerSys(){
-	local test_name="inode_usage_per_system"
+		local test_name="inode_usage_per_system"
     local express=$(df -i | tail -n +2)
 
     createTest "$test_name" "$express" "5"

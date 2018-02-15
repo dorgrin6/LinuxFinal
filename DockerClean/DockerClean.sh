@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Idan Goor & Dor Grinshpan
-# ----------------------------------
+# -----------------------------------------------
 # Description : Remove containers by choice.
 # Input		  : Images to remove, by status or by pattern.
 # Exit code   : 0 if succeeded.
@@ -14,7 +14,7 @@ status=''
 pattern=''
 command=''
 testMode=false
-set -x
+#set -x
 
 removeContainer(){
 	for img in "$@"; do
@@ -31,7 +31,7 @@ killByStatus(){
 }
 
 usage(){
-  echo "usage: docker_clean [-c ps -s <status> | -c images -o <pattern> ]"
+  echo "usage: $0 [-c ps -s <status> | -c images -o <pattern> ]"
   echo "  -c ps -s               remove all the docker containers with a given status. Status can be \"running\" or \"exited\"."
   echo "  -c images -o <pattern> remove all the images that match the pattern."
   echo "  -t                     test mode"
